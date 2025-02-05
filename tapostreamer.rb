@@ -8,8 +8,6 @@ class Tapostreamer < Formula
   license "MIT"
 
   depends_on "python@3.11"
-  depends_on "opencv-python"
-  depends_on "numpy"
 
   resource "backports-tarfile" do
     url "https://files.pythonhosted.org/packages/86/72/cd9b395f25e290e633655a100af28cb253e4393396264a98bd5f5951d50f/backports_tarfile-1.2.0.tar.gz"
@@ -44,6 +42,16 @@ class Tapostreamer < Formula
   resource "more-itertools" do
     url "https://files.pythonhosted.org/packages/88/3b/7fa1fe835e2e93fd6d7b52b2f95ae810cf5ba133e1845f726f5a992d62c2/more-itertools-10.6.0.tar.gz"
     sha256 "2cd7fad1009c31cc9fb6a035108509e6547547a7a738374f10bd49a09eb3ee3b"
+  end
+
+  resource "numpy" do
+    url "https://files.pythonhosted.org/packages/ec/d0/c12ddfd3a02274be06ffc71f3efc6d0e457b0409c4481596881e748cb264/numpy-2.2.2.tar.gz"
+    sha256 "ed6906f61834d687738d25988ae117683705636936cc605be0bb208b23df4d8f"
+  end
+
+  resource "opencv-python" do
+    url "https://files.pythonhosted.org/packages/17/06/68c27a523103dad5837dc5b87e71285280c4f098c60e4fe8a8db6486ab09/opencv-python-4.11.0.86.tar.gz"
+    sha256 "03d60ccae62304860d232272e4a4fda93c39d595780cb40b161b310244b736a4"
   end
 
   resource "zipp" do
