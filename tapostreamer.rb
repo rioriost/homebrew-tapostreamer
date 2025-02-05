@@ -25,6 +25,7 @@ class Tapostreamer < Formula
   end
   
   def install
+    ENV.delete("PIP_NO_BINARY")
     virtualenv_install_with_resources
   end
 
