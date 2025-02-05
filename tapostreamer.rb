@@ -25,8 +25,11 @@ class Tapostreamer < Formula
   end
   
   def install
-    ENV.delete("PIP_NO_BINARY")
-    virtualenv_install_with_resources
+    venv = virtualenv_create(libexec, "python3.11")
+    resources.each do |r|
+      venv.pip_install r.cached_download, "--only-binary=:all:"
+    end
+    venv.pip_install_and_link buildpath, "--only-binary=:all:" 
   end
 
   test do
