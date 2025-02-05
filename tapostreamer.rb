@@ -60,7 +60,20 @@ class Tapostreamer < Formula
   end
 
   def install
-    virtualenv_install_with_resources
+    # Create a virtual environment
+    venv = virtualenv_create(libexec, "python3")
+
+    # Install all resources except numpy and opencv-python
+    (resources.map(&:name).to_set - ["numpy", "opencv-python"]).each do |r|
+      venv.pip_install resource(r)
+    end
+
+    # Manually install numpy and opencv-python
+    venv.pip_install resource("numpy")
+    venv.pip_install resource("opencv-python")
+
+    # Install the main package
+    venv.pip_install_and_link buildpath
   end
 
   test do
