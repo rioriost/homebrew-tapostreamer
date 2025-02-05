@@ -68,9 +68,10 @@ class Tapostreamer < Formula
       venv.pip_install resource(r)
     end
 
-    # Manually install numpy and opencv-python
-    venv.pip_install resource("numpy")
-    venv.pip_install resource("opencv-python")
+    # Manually install numpy and opencv-python using pip without --no-binary
+    system "libexec/bin/pip", "install", "--upgrade", "pip"
+    system "libexec/bin/pip", "install", "numpy"
+    system "libexec/bin/pip", "install", "opencv-python"
 
     # Install the main package
     venv.pip_install_and_link buildpath
