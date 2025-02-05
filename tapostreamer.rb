@@ -69,7 +69,6 @@ class Tapostreamer < Formula
     end
 
     # Manually install numpy and opencv-python using pip without --no-binary
-    system "libexec/bin/pip", "install", "--upgrade", "pip"
     system "libexec/bin/pip", "install", "numpy"
     system "libexec/bin/pip", "install", "opencv-python"
 
