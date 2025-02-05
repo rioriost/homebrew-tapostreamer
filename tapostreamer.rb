@@ -29,7 +29,7 @@ class Tapostreamer < Formula
     resources.each do |r|
       venv.pip_install r.cached_download, "--only-binary=:all:"
     end
-    venv.pip_install_and_link buildpath, "--only-binary=:all:" 
+    venv.pip_install_and_link buildpath 
   end
 
   test do
