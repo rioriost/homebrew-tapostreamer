@@ -32,6 +32,6 @@ class Tapostreamer < Formula
   end
 
   test do
-    system "#{bin}/tapostreamer", "-v"
+    system "#{bin}/tapostreamer"
   end
 end
