@@ -1,4 +1,4 @@
-class TapoStreamer < Formula
+class tapostreamer < Formula
   include Language::Python::Virtualenv
 
   desc "TapoStreamer is an Python application that shows the video streaming from the cameras made by TP-Link."
