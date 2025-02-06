@@ -92,6 +92,9 @@ Press 'q' to quit.
 
 ## Release Notes
 
+### 0.1.2 Release
+* Small bug fixes.
+
 ### 0.1.1 Release
 * Small bug fixes.
 
