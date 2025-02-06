@@ -45,11 +45,6 @@ class Tapostreamer < Formula
     sha256 "2cd7fad1009c31cc9fb6a035108509e6547547a7a738374f10bd49a09eb3ee3b"
   end
 
-  resource "opencv-python" do
-    url "https://files.pythonhosted.org/packages/17/06/68c27a523103dad5837dc5b87e71285280c4f098c60e4fe8a8db6486ab09/opencv-python-4.11.0.86.tar.gz"
-    sha256 "03d60ccae62304860d232272e4a4fda93c39d595780cb40b161b310244b736a4"
-  end
-
   resource "zipp" do
     url "https://files.pythonhosted.org/packages/3f/50/bad581df71744867e9468ebd0bcd6505de3b275e06f202c2cb016e3ff56f/zipp-3.21.0.tar.gz"
     sha256 "2c9958f6430a2040341a52eb608ed6dd93ef4392e02ffe219417c1b28b5dd1f4"
@@ -57,6 +52,7 @@ class Tapostreamer < Formula
 
   def install
     virtualenv_install_with_resources
+    system "python3", "-m", "libexec/bin/pip", "install", "opencv-python"
   end
 
   test do
