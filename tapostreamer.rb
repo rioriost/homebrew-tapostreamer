@@ -52,7 +52,7 @@ class Tapostreamer < Formula
 
   def install
     virtualenv_install_with_resources
-    system "python3", "-m", "libexec/bin/pip", "install", "opencv-python"
+    system "libexec/bin/pip", "install", "opencv-python"
   end
 
   test do
