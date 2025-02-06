@@ -1,12 +1,16 @@
-from tapostreamer import Camera, UserCredential, Utility, Window
-
+import os
 import pathlib
+import sys
 from typing import Optional
 import unittest
 from unittest.mock import MagicMock, patch
 
 import cv2
 import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+from tapostreamer.main import Camera, UserCredential, Utility, Window
 
 
 class FakeCapture:

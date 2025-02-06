@@ -19,7 +19,7 @@ def mypy(session):
 
 
 @nox.session(tags=["pytest"])
-def test(session):
+def pytest(session):
     session.install(".")
     session.install("pytest")
     test_files = ["test.py"]

@@ -9,7 +9,6 @@ import subprocess
 import sys
 from importlib.metadata import version
 
-
 import cv2
 import keyring
 import numpy as np
@@ -204,6 +203,7 @@ class Camera:
     def scan_tcp_port(
         ip_address: str = "", port_num: int = 554, timeout: int = 2
     ) -> bool:
+        print(f"Scanning {ip_address}:{port_num}...")
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout)
