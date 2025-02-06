@@ -17,12 +17,16 @@ class FakeCapture:
     def __init__(self, frame: Optional[np.ndarray], ret: bool = True) -> None:
         self.frame = frame
         self.ret = ret
+        self.opened = True
+
+    def isOpened(self) -> bool:
+        return self.opened
 
     def read(self) -> tuple:
         return self.ret, self.frame
 
     def release(self) -> None:
-        pass
+        self.opened = False
 
 
 class TestWindow(unittest.TestCase):
@@ -56,9 +60,8 @@ class TestWindow(unittest.TestCase):
         )
         frames = window.get_frames([cap_fail])
         self.assertEqual(len(frames), 1)
-        self.assertTrue(
-            (frames[0] == np.zeros(Window.DEFAULT_FRAME_SIZE, dtype=np.uint8)).all()
-        )
+        expected_placeholder = np.zeros(Window.DEFAULT_FRAME_SIZE, dtype=np.uint8)
+        self.assertTrue(np.array_equal(frames[0], expected_placeholder))
 
     def test_create_grid(self) -> None:
         # 2 x 2 のグリッド生成テスト
