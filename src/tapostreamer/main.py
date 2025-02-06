@@ -7,6 +7,7 @@ import readline
 import socket
 import subprocess
 import sys
+import time
 from importlib.metadata import version
 
 import cv2
@@ -32,40 +33,89 @@ class Window:
     def show(self) -> None:
         print(f"Starting {APP_NAME}...")
         print("Press 'q' to quit.")
-        urls = [
+
+        # create a list of camera URLs (exclude empty strings)
+        self._urls = [
             f"rtsp://{self._user_id}:{self._user_pw}@{ip_address}:{self.PORT_NO}/stream2"
             for ip_address in self._cameras.values()
             if ip_address != ""
         ]
-        caps = [cv2.VideoCapture(url) for url in urls]
+        # create the instance of VideoCapture for each URL
+        caps = [cv2.VideoCapture(url) for url in self._urls]
 
         rows = self._layout["row"]
         cols = self._layout["col"]
 
+        start_time = time.time()
         try:
             while True:
-                frames = self.get_frames(caps)
-                combined_frame = self.create_grid(frames=frames, rows=rows, cols=cols)
-                cv2.imshow(APP_NAME, combined_frame)
+                try:
+                    frames = self.get_frames(caps)
+                    combined_frame = self.create_grid(
+                        frames=frames, rows=rows, cols=cols
+                    )
+                    cv2.imshow(APP_NAME, combined_frame)
+                except Exception as e:
+                    print(f"Error occurred while getting frames or creating grid: {e}")
 
+                # exit the loop if 'q' is pressed
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
+
+                # check the elapsed time
+                if time.time() - start_time > 600:
+                    print("Reconnecting...")
+                    for cap in caps:
+                        cap.release()
+                    time.sleep(1)
+                    caps = [cv2.VideoCapture(url) for url in self._urls]
+                    start_time = time.time()
         finally:
+            print("Releasing resources...")
             for cap in caps:
                 cap.release()
             cv2.destroyAllWindows()
 
-    def get_frames(self, caps: list = []) -> list:
+    def get_frames(self, caps: list) -> list:
         frames = []
-        for cap in caps:
-            ret, frame = cap.read()
-            if ret:
-                # フレームを統一したサイズにリサイズ
-                frame = cv2.resize(
-                    frame, (self.DEFAULT_FRAME_SIZE[1], self.DEFAULT_FRAME_SIZE[0])
+        # fetch frames from each camera
+        for idx, cap in enumerate(caps):
+            # check if the VideoCapture instance is opened
+            if not cap.isOpened():
+                print(
+                    f"[WARN] Capture (Index:{idx}) is not opened. Trying to reconnect..."
                 )
-                frames.append(frame)
+                # reconnect: reuse the URL stored in self._urls
+                cap.release()
+                # reconnect after a short wait
+                time.sleep(0.5)
+                cap = cv2.VideoCapture(self._urls[idx])
+                caps[idx] = cap  # update the list of VideoCapture instances
+
+            try:
+                ret, frame = cap.read()
+            except Exception as e:
+                print(
+                    f"[ERROR] Exception occurred during cap.read() (Index:{idx}): {e}"
+                )
+                ret = False
+
+            if ret and frame is not None:
+                try:
+                    # unify the frame size (catch exceptions if necessary)
+                    frame = cv2.resize(
+                        frame, (self.DEFAULT_FRAME_SIZE[1], self.DEFAULT_FRAME_SIZE[0])
+                    )
+                    frames.append(frame)
+                except Exception as resize_err:
+                    print(
+                        f"[ERROR] Error occurred during resize (Index:{idx}): {resize_err}"
+                    )
+                    frames.append(np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8))
             else:
+                print(
+                    f"[WARN] Camera (Index:{idx}) failed to get a frame. Using a placeholder image."
+                )
                 frames.append(np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8))
         return frames
 
