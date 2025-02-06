@@ -8,6 +8,7 @@ class Tapostreamer < Formula
   license "MIT"
 
   depends_on "python@3.11"
+  python_executable = Formula["python@3.11"].opt_bin/"python3"
   depends_on "numpy"
 
   resource "backports-tarfile" do
@@ -52,7 +53,7 @@ class Tapostreamer < Formula
 
   def install
     virtualenv_install_with_resources
-    system "libexec/bin/pip", "install", "opencv-python"
+    system python_executable, "-m", "pip", "install", "opencv-python"
   end
 
   test do
