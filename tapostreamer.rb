@@ -3,8 +3,8 @@ class Tapostreamer < Formula
 
   desc "TapoStreamer is an Python application that shows the video streaming from the cameras made by TP-Link."
   homepage "https://github.com/rioriost/tapostreamer/"
-  url "https://files.pythonhosted.org/packages/f5/aa/6a774a1633efa0f1a842ec2fda641b1a572b37934f9a792d741cc95e944c/tapostreamer-0.1.1.tar.gz"
-  sha256 "15620e39029d685a6b088b18af30bc3a4b6a63bd52cc04082323dc16cf759e67"
+  url "https://files.pythonhosted.org/packages/42/f1/668f1f6796832c7c6a10b80f7c71fe988340e2bdf335301d3a26f1b03d6d/tapostreamer-0.1.2.tar.gz"
+  sha256 "9ee544f58e279f8807270b5afb9426023411720e68e98ffb453c30159784f38b"
   license "MIT"
 
   depends_on "python@3.11"
