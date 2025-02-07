@@ -92,6 +92,9 @@ Press 'q' to quit.
 
 ## Release Notes
 
+### 0.2.0 Release
+* Multi-threading support.
+
 ### 0.1.2 Release
 * Small bug fixes.
 
@@ -100,6 +103,11 @@ Press 'q' to quit.
 
 ### 0.1.0 Release
 * First release.
+
+## Known Issues
+
+### 0.2.0 Release
+* tapostreamer sometimes fails with 'segmentation fault' when it's terminated. Due to the OpenCV implementation.
 
 ## License
 MIT License

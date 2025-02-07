@@ -11,14 +11,14 @@ def lint(session):
     session.run("uv", "run", "ruff", "format")
 
 
-@nox.session(tags=["mypy"])
+@nox.session(python=["3.11", "3.12", "3.13"], tags=["mypy"])
 def mypy(session):
     session.install(".")
     session.install("mypy")
     session.run("uv", "run", "mypy", "src")
 
 
-@nox.session(tags=["pytest"])
+@nox.session(python=["3.11", "3.12", "3.13"], tags=["pytest"])
 def pytest(session):
     session.install(".")
     session.install("pytest")
