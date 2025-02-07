@@ -8,6 +8,7 @@ import socket
 import subprocess
 import sys
 import time
+import threading
 from importlib.metadata import version
 
 import cv2
@@ -20,7 +21,62 @@ APP_NAME = "TapoStreamer"
 __version__ = version("tapostreamer")
 
 
+class CameraStreamThread(threading.Thread):
+    def __init__(self, url: str, default_frame: np.ndarray, frame_size: tuple):
+        super().__init__(daemon=True)
+        self.url = url
+        # create VideoCapture instance to be used in separate thread
+        self.capture = cv2.VideoCapture(url)
+        self.frame = default_frame.copy()  # hold the latest frame
+        self.frame_size = frame_size  # (height, width, channel)
+        self.stopped = False
+        self.lock = threading.Lock()
+
+    def run(self):
+        while not self.stopped:
+            # reconnect if capture is closed during operation
+            if not self.capture.isOpened():
+                print(
+                    f"[WARN] Thread for {self.url} finds capture closed. Reconnecting..."
+                )
+                self.capture.release()
+                time.sleep(0.5)
+                self.capture = cv2.VideoCapture(self.url)
+            try:
+                ret, frame = self.capture.read()
+            except Exception as e:
+                print(f"[ERROR] Exception in thread reading {self.url}: {e}")
+                ret = False
+            if ret and frame is not None:
+                try:
+                    resized = cv2.resize(
+                        frame, (self.frame_size[1], self.frame_size[0])
+                    )
+                except Exception as resize_err:
+                    print(f"[ERROR] Error resizing frame from {self.url}: {resize_err}")
+                    resized = np.zeros(self.frame_size, dtype=np.uint8)
+            else:
+                print(f"[WARN] Failed to get frame from {self.url}, using placeholder.")
+                resized = np.zeros(self.frame_size, dtype=np.uint8)
+            with self.lock:
+                self.frame = resized
+            # add a little wait to reduce the load of infinite loop
+            time.sleep(0.01)
+
+    def get_frame(self) -> np.ndarray:
+        with self.lock:
+            # return a copy of the frame
+            return self.frame.copy()
+
+    def stop(self) -> None:
+        self.stopped = True
+        # release the capture used in the thread
+        if self.capture.isOpened():
+            self.capture.release()
+
+
 class Window:
+    # DEFAULT_FRAME_SIZE は (height, width, channels)
     DEFAULT_FRAME_SIZE = (360, 640, 3)
     PORT_NO = 554
 
@@ -29,19 +85,30 @@ class Window:
         self._user_pw = user_pw
         self._layout = layout
         self._cameras = cameras
+        self.stream_threads: list[
+            CameraStreamThread
+        ] = []  # list of CameraStreamThread instances
 
     def show(self) -> None:
         print(f"Starting {APP_NAME}...")
         print("Press 'q' to quit.")
 
-        # create a list of camera URLs (exclude empty strings)
+        # create a list of RTSP URLs for each camera (skip empty strings)
         self._urls = [
             f"rtsp://{self._user_id}:{self._user_pw}@{ip_address}:{self.PORT_NO}/stream2"
             for ip_address in self._cameras.values()
             if ip_address != ""
         ]
-        # create the instance of VideoCapture for each URL
-        caps = [cv2.VideoCapture(url) for url in self._urls]
+
+        # after creating the dedicated threads for each url, start them
+        for url in self._urls:
+            thread = CameraStreamThread(
+                url,
+                np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8),
+                self.DEFAULT_FRAME_SIZE,
+            )
+            thread.start()
+            self.stream_threads.append(thread)
 
         rows = self._layout["row"]
         cols = self._layout["col"]
@@ -50,7 +117,7 @@ class Window:
         try:
             while True:
                 try:
-                    frames = self.get_frames(caps)
+                    frames = self.get_frames()
                     combined_frame = self.create_grid(
                         frames=frames, rows=rows, cols=cols
                     )
@@ -58,79 +125,66 @@ class Window:
                 except Exception as e:
                     print(f"Error occurred while getting frames or creating grid: {e}")
 
-                # exit the loop if 'q' is pressed
+                # check for exit key
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
-                # check the elapsed time
+                # reconnect all streams if 10 minutes have passed
                 if time.time() - start_time > 600:
-                    print("Reconnecting...")
-                    for cap in caps:
-                        cap.release()
-                    time.sleep(1)
-                    caps = [cv2.VideoCapture(url) for url in self._urls]
+                    print("Reconnecting all streams...")
+                    self.restart_all_streams()
                     start_time = time.time()
+
         finally:
-            print("Releasing resources...")
-            for cap in caps:
-                cap.release()
+            print("Stopping stream threads and releasing resources...")
+            for thread in self.stream_threads:
+                thread.stop()
+            # for thread in self.stream_threads: # join raises segfault
+            #    thread.join()
             cv2.destroyAllWindows()
 
-    def get_frames(self, caps: list) -> list:
+    def get_frames(self) -> list:
         frames = []
-        # fetch frames from each camera
-        for idx, cap in enumerate(caps):
-            # check if the VideoCapture instance is opened
-            if not cap.isOpened():
-                print(
-                    f"[WARN] Capture (Index:{idx}) is not opened. Trying to reconnect..."
-                )
-                # reconnect: reuse the URL stored in self._urls
-                cap.release()
-                # reconnect after a short wait
-                time.sleep(0.5)
-                cap = cv2.VideoCapture(self._urls[idx])
-                caps[idx] = cap  # update the list of VideoCapture instances
-
+        # fetch the latest frame from each thread
+        for idx, stream_thread in enumerate(self.stream_threads):
             try:
-                ret, frame = cap.read()
+                frame = stream_thread.get_frame()
+                frames.append(frame)
             except Exception as e:
-                print(
-                    f"[ERROR] Exception occurred during cap.read() (Index:{idx}): {e}"
-                )
-                ret = False
-
-            if ret and frame is not None:
-                try:
-                    # unify the frame size (catch exceptions if necessary)
-                    frame = cv2.resize(
-                        frame, (self.DEFAULT_FRAME_SIZE[1], self.DEFAULT_FRAME_SIZE[0])
-                    )
-                    frames.append(frame)
-                except Exception as resize_err:
-                    print(
-                        f"[ERROR] Error occurred during resize (Index:{idx}): {resize_err}"
-                    )
-                    frames.append(np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8))
-            else:
-                print(
-                    f"[WARN] Camera (Index:{idx}) failed to get a frame. Using a placeholder image."
-                )
+                print(f"[ERROR] Error getting frame from thread {idx}: {e}")
                 frames.append(np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8))
         return frames
 
-    def create_grid(
-        self, frames: list = [], rows: int = 0, cols: int = 0
-    ) -> np.ndarray:
-        grid_frames = [
-            np.hstack(
-                frames[r * cols : (r + 1) * cols]
-                + [np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8)]
-                * (cols - len(frames[r * cols : (r + 1) * cols]))
+    def create_grid(self, frames: list, rows: int, cols: int) -> np.ndarray:
+        # fill a placeholder image if no frames are available
+        grid_frames = []
+        for r in range(rows):
+            # if no frames are available, fill with placeholder images
+            row_frames = frames[r * cols : (r + 1) * cols]
+            if len(row_frames) < cols:
+                row_frames += [np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8)] * (
+                    cols - len(row_frames)
+                )
+            row_concat = np.hstack(row_frames)
+            grid_frames.append(row_concat)
+        combined = np.vstack(grid_frames)
+        return combined
+
+    def restart_all_streams(self):
+        # stop and restart all threads
+        for thread in self.stream_threads:
+            thread.stop()
+            thread.join()
+        self.stream_threads = []
+        # create new threads for each url
+        for url in self._urls:
+            thread = CameraStreamThread(
+                url,
+                np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8),
+                self.DEFAULT_FRAME_SIZE,
             )
-            for r in range(rows)
-        ]
-        return np.vstack(grid_frames)
+            thread.start()
+            self.stream_threads.append(thread)
 
 
 class Camera:
