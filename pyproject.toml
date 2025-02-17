@@ -3,10 +3,10 @@ name = "tapostreamer"
 authors = [
     {name = "Rio Fujita", email = "rifujita@microsoft.com"},
 ]
-version = "0.2.0"
+version = "0.3.0"
 license = {file = "LICENSE"}
 description = "TapoStreamer is an Python application that shows the video streaming from the cameras made by TP-Link."
-readme = "README.md"
+readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.11"
 dependencies = [
     "keyring>=25.6.0",
@@ -17,8 +17,8 @@ dependencies = [
 tapostreamer = "tapostreamer.main:main"
 
 [project.urls]
-Homepage = "https://github.com/rioriost/tapostreamer"
-Issues = "https://github.com/rioriost/tapostreamer/issues"
+Homepage = "https://github.com/rioriost/homebrew-tapostreamer"
+Issues = "https://github.com/rioriost/homebrew-tapostreamer/issues"
 
 [build-system]
 requires = ["hatchling"]

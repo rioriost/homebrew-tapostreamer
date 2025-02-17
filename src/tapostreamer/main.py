@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import configparser
 import ipaddress
@@ -8,75 +9,100 @@ import socket
 import subprocess
 import sys
 import time
-import threading
+import logging
 from importlib.metadata import version
-
 import cv2
 import keyring
 import numpy as np
+import multiprocessing
+from multiprocessing import Process, Event, Queue
 
+logging.basicConfig(level=logging.WARNING)
 
-# Application Name
 APP_NAME = "TapoStreamer"
 __version__ = version("tapostreamer")
 
 
-class CameraStreamThread(threading.Thread):
-    def __init__(self, url: str, default_frame: np.ndarray, frame_size: tuple):
-        super().__init__(daemon=True)
-        self.url = url
-        # create VideoCapture instance to be used in separate thread
-        self.capture = cv2.VideoCapture(url)
-        self.frame = default_frame.copy()  # hold the latest frame
-        self.frame_size = frame_size  # (height, width, channel)
-        self.stopped = False
-        self.lock = threading.Lock()
+def camera_stream_worker(url: str, frame_size: tuple, out_queue, stop_event):
+    """
+    Fetch frames from a camera using VideoCapture at ~15 fps.
+    """
+    capture = cv2.VideoCapture(url)
+    desired_interval = 0.07  # Target 15 frames per second (~0.0667 sec per frame)
+    while not stop_event.is_set():
+        loop_start = time.perf_counter()
+        if not capture.isOpened():
+            logging.warning(f"Process for {url} finds capture closed. Reconnecting...")
+            capture.release()
+            capture = cv2.VideoCapture(url)
 
-    def run(self):
-        while not self.stopped:
-            # reconnect if capture is closed during operation
-            if not self.capture.isOpened():
-                print(
-                    f"[WARN] Thread for {self.url} finds capture closed. Reconnecting..."
-                )
-                self.capture.release()
-                time.sleep(0.5)
-                self.capture = cv2.VideoCapture(self.url)
+        try:
+            ret, frame = capture.read()
+        except Exception as e:
+            logging.error(f"Exception in process reading {url}: {e}")
+            ret = False
+
+        if ret and frame is not None:
             try:
-                ret, frame = self.capture.read()
-            except Exception as e:
-                print(f"[ERROR] Exception in thread reading {self.url}: {e}")
-                ret = False
-            if ret and frame is not None:
-                try:
-                    resized = cv2.resize(
-                        frame, (self.frame_size[1], self.frame_size[0])
-                    )
-                except Exception as resize_err:
-                    print(f"[ERROR] Error resizing frame from {self.url}: {resize_err}")
-                    resized = np.zeros(self.frame_size, dtype=np.uint8)
-            else:
-                print(f"[WARN] Failed to get frame from {self.url}, using placeholder.")
-                resized = np.zeros(self.frame_size, dtype=np.uint8)
-            with self.lock:
-                self.frame = resized
-            # add a little wait to reduce the load of infinite loop
-            time.sleep(0.01)
+                resized = cv2.resize(frame, (frame_size[1], frame_size[0]))
+            except Exception as resize_err:
+                logging.error(f"Error resizing frame from {url}: {resize_err}")
+                resized = np.zeros(frame_size, dtype=np.uint8)
+        else:
+            logging.warning(f"Failed to get frame from {url}, using placeholder.")
+            resized = np.zeros(frame_size, dtype=np.uint8)
+
+        # Always keep only the latest frame in the queue
+        # while not out_queue.empty():
+        #    try:
+        #        out_queue.get_nowait()
+        #    except Exception:
+        #        break
+        try:
+            out_queue.put(resized, block=True, timeout=0.03)
+        except Exception:
+            pass
+            # logging.error(f"Cannot put frame into queue for {url}: {e}")
+
+        # Calculate elapsed processing time and sleep only if needed.
+        elapsed = time.perf_counter() - loop_start
+        remaining_time = desired_interval - elapsed
+        if remaining_time > 0:
+            time.sleep(remaining_time)
+    capture.release()
+
+
+class CameraStreamProcess:
+    def __init__(self, url: str, default_frame: np.ndarray, frame_size: tuple):
+        self.url = url
+        self.frame_size = frame_size  # (height, width, channels)
+        self.default_frame = default_frame.copy()  # placeholder
+        self.queue = Queue(maxsize=5)
+        self.stop_event = Event()
+        self.process = Process(
+            target=camera_stream_worker,
+            args=(self.url, self.frame_size, self.queue, self.stop_event),
+            daemon=True,
+        )
+
+    def start(self) -> None:
+        self.process.start()
 
     def get_frame(self) -> np.ndarray:
-        with self.lock:
-            # return a copy of the frame
-            return self.frame.copy()
+        try:
+            frame = self.queue.get_nowait()
+            return frame
+        except Exception:
+            return self.default_frame.copy()
 
     def stop(self) -> None:
-        self.stopped = True
-        # release the capture used in the thread
-        if self.capture.isOpened():
-            self.capture.release()
+        self.stop_event.set()
+        if self.process.is_alive():
+            self.process.join(timeout=1)
 
 
 class Window:
-    # DEFAULT_FRAME_SIZE は (height, width, channels)
+    # DEFAULT_FRAME_SIZE (height, width, channels)
     DEFAULT_FRAME_SIZE = (360, 640, 3)
     PORT_NO = 554
 
@@ -85,30 +111,28 @@ class Window:
         self._user_pw = user_pw
         self._layout = layout
         self._cameras = cameras
-        self.stream_threads: list[
-            CameraStreamThread
-        ] = []  # list of CameraStreamThread instances
+        self.stream_processes: list[CameraStreamProcess] = []
 
     def show(self) -> None:
-        print(f"Starting {APP_NAME}...")
+        logging.info(f"Starting {APP_NAME}...")
         print("Press 'q' to quit.")
 
-        # create a list of RTSP URLs for each camera (skip empty strings)
+        # create rtsp urls for each camera
         self._urls = [
             f"rtsp://{self._user_id}:{self._user_pw}@{ip_address}:{self.PORT_NO}/stream2"
             for ip_address in self._cameras.values()
             if ip_address != ""
         ]
 
-        # after creating the dedicated threads for each url, start them
+        # Create processes for each URL
         for url in self._urls:
-            thread = CameraStreamThread(
+            proc = CameraStreamProcess(
                 url,
                 np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8),
                 self.DEFAULT_FRAME_SIZE,
             )
-            thread.start()
-            self.stream_threads.append(thread)
+            proc.start()
+            self.stream_processes.append(proc)
 
         rows = self._layout["row"]
         cols = self._layout["col"]
@@ -122,8 +146,11 @@ class Window:
                         frames=frames, rows=rows, cols=cols
                     )
                     cv2.imshow(APP_NAME, combined_frame)
+                    time.sleep(0.07)
                 except Exception as e:
-                    print(f"Error occurred while getting frames or creating grid: {e}")
+                    logging.error(
+                        f"Error occurred while getting frames or creating grid: {e}"
+                    )
 
                 # check for exit key
                 if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -131,35 +158,31 @@ class Window:
 
                 # reconnect all streams if 10 minutes have passed
                 if time.time() - start_time > 600:
-                    print("Reconnecting all streams...")
-                    self.restart_all_streams()
+                    # print("Reconnecting all streams...")
+                    # self.restart_all_streames()
                     start_time = time.time()
 
         finally:
-            print("Stopping stream threads and releasing resources...")
-            for thread in self.stream_threads:
-                thread.stop()
-            # for thread in self.stream_threads: # join raises segfault
-            #    thread.join()
+            print("Stopping stream processes and releasing resources...")
+            for proc in self.stream_processes:
+                proc.stop()
+            logging.debug("Stopped stream processes and releasing resources...")
             cv2.destroyAllWindows()
 
     def get_frames(self) -> list:
         frames = []
-        # fetch the latest frame from each thread
-        for idx, stream_thread in enumerate(self.stream_threads):
+        for idx, proc in enumerate(self.stream_processes):
             try:
-                frame = stream_thread.get_frame()
+                frame = proc.get_frame()
                 frames.append(frame)
             except Exception as e:
-                print(f"[ERROR] Error getting frame from thread {idx}: {e}")
+                logging.error(f"Error getting frame from process {idx}: {e}")
                 frames.append(np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8))
         return frames
 
     def create_grid(self, frames: list, rows: int, cols: int) -> np.ndarray:
-        # fill a placeholder image if no frames are available
         grid_frames = []
         for r in range(rows):
-            # if no frames are available, fill with placeholder images
             row_frames = frames[r * cols : (r + 1) * cols]
             if len(row_frames) < cols:
                 row_frames += [np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8)] * (
@@ -170,21 +193,20 @@ class Window:
         combined = np.vstack(grid_frames)
         return combined
 
-    def restart_all_streams(self):
-        # stop and restart all threads
-        for thread in self.stream_threads:
-            thread.stop()
-            thread.join()
-        self.stream_threads = []
-        # create new threads for each url
+    def restart_all_streames(self):
+        logging.debug("Stopping existing processes...")
+        for proc in self.stream_processes:
+            proc.stop()
+        self.stream_processes = []
+        logging.debug("Creating new processes...")
         for url in self._urls:
-            thread = CameraStreamThread(
+            proc = CameraStreamProcess(
                 url,
                 np.zeros(self.DEFAULT_FRAME_SIZE, dtype=np.uint8),
                 self.DEFAULT_FRAME_SIZE,
             )
-            thread.start()
-            self.stream_threads.append(thread)
+            proc.start()
+            self.stream_processes.append(proc)
 
 
 class Camera:
@@ -299,7 +321,6 @@ class Camera:
             print("Failed to execute arp command.")
             print("Error Message:", e.output.decode("utf-8"))
             return []
-
         ip_address_list = re.findall(r"\((\d{1,3}(?:\.\d{1,3}){3})\)", output)
         return ip_address_list
 
@@ -354,14 +375,11 @@ class Camera:
             except ValueError:
                 print("Please enter a valid integer.")
                 continue
-
             if accept_zero and num == 0:
                 return num
-
             if num < 1:
                 print("Please enter a valid integer.")
                 continue
-
             return num
 
     def input_ip_address(self, prompt: str = "", default: str = "") -> str:
@@ -463,6 +481,8 @@ class Utility:
 def main() -> None:
     if sys.platform != "darwin":
         sys.exit("This program is only supported on macOS.")
+
+    multiprocessing.set_start_method("spawn", force=True)
 
     parser = argparse.ArgumentParser(description=APP_NAME)
     parser.add_argument(

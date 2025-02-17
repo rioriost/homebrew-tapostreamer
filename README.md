@@ -93,6 +93,9 @@ Press 'q' to quit.
 ## Release Notes
 
 ### 0.2.0 Release
+* Multi-processing support.
+
+### 0.2.0 Release
 * Multi-threading support.
 
 ### 0.1.2 Release
