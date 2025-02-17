@@ -7,8 +7,7 @@ class Tapostreamer < Formula
   sha256 "740c7ae90dfd890e335c3b6345338484ff966bb0af682fe803403dd36476973b"
   license "MIT"
 
-  depends_on "python@3.11"
-  depends_on "numpy"
+  depends_on "python@3.13"
 
   resource "backports-tarfile" do
     url "https://files.pythonhosted.org/packages/86/72/cd9b395f25e290e633655a100af28cb253e4393396264a98bd5f5951d50f/backports_tarfile-1.2.0.tar.gz"
@@ -52,7 +51,7 @@ class Tapostreamer < Formula
 
   def install
     virtualenv_install_with_resources
-    system libexec/"bin/python", "-m", "pip", "install", "opencv-python"
+    system libexec/"bin/python", "-m", "pip", "install", "opencv-python", "numpy"
   end
 
   test do
