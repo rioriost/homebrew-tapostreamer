@@ -3,8 +3,8 @@ class Tapostreamer < Formula
 
   desc "TapoStreamer is an Python application that shows the video streaming from the cameras made by TP-Link."
   homepage "https://github.com/rioriost/tapostreamer/"
-  url "https://files.pythonhosted.org/packages/9f/22/b308930a8cfef0c9e7341bc124da6eb069a5438031b1bee9241de328a2cb/tapostreamer-0.3.0.tar.gz"
-  sha256 "740c7ae90dfd890e335c3b6345338484ff966bb0af682fe803403dd36476973b"
+  url "https://files.pythonhosted.org/packages/9a/70/d03549d01b09ba525002aa8dfc37c5214b16b38ec6c5e4a5f86bb3197b02/tapostreamer-0.3.1.tar.gz"
+  sha256 "9abd310cc6343a86999252cd3a15105a518ddd2bc770191fd423e0034ca043fa"
   license "MIT"
 
   depends_on "python@3.13"
@@ -15,8 +15,8 @@ class Tapostreamer < Formula
   end
 
   resource "importlib-metadata" do
-    url "https://files.pythonhosted.org/packages/33/08/c1395a292bb23fd03bdf572a1357c5a733d3eecbab877641ceacab23db6e/importlib_metadata-8.6.1.tar.gz"
-    sha256 "310b41d755445d74569f993ccfc22838295d9fe005425094fad953d7f15c8580"
+    url "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz"
+    sha256 "d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000"
   end
 
   resource "jaraco-classes" do
@@ -40,8 +40,8 @@ class Tapostreamer < Formula
   end
 
   resource "more-itertools" do
-    url "https://files.pythonhosted.org/packages/88/3b/7fa1fe835e2e93fd6d7b52b2f95ae810cf5ba133e1845f726f5a992d62c2/more-itertools-10.6.0.tar.gz"
-    sha256 "2cd7fad1009c31cc9fb6a035108509e6547547a7a738374f10bd49a09eb3ee3b"
+    url "https://files.pythonhosted.org/packages/ce/a0/834b0cebabbfc7e311f30b46c8188790a37f89fc8d756660346fe5abfd09/more_itertools-10.7.0.tar.gz"
+    sha256 "9fddd5403be01a94b204faadcff459ec3568cf110265d3c54323e1e866ad29d3"
   end
 
   resource "zipp" do
