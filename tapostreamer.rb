@@ -3,8 +3,8 @@ class Tapostreamer < Formula
 
   desc "TapoStreamer is an Python application that shows the video streaming from the cameras made by TP-Link."
   homepage "https://github.com/rioriost/tapostreamer/"
-  url "https://files.pythonhosted.org/packages/9a/70/d03549d01b09ba525002aa8dfc37c5214b16b38ec6c5e4a5f86bb3197b02/tapostreamer-0.3.1.tar.gz"
-  sha256 "9abd310cc6343a86999252cd3a15105a518ddd2bc770191fd423e0034ca043fa"
+  url "https://files.pythonhosted.org/packages/b2/f4/e98aec1c8d0ba3623c81e12fa873e1ecddb448f341f567da8de47a0c3ab9/tapostreamer-0.3.2.tar.gz"
+  sha256 "bd79cdd4f4ba583d2befd2d144cce52852c3109fdd021e78873f8c5823b10043"
   license "MIT"
 
   depends_on "python@3.13"
@@ -45,8 +45,8 @@ class Tapostreamer < Formula
   end
 
   resource "zipp" do
-    url "https://files.pythonhosted.org/packages/3f/50/bad581df71744867e9468ebd0bcd6505de3b275e06f202c2cb016e3ff56f/zipp-3.21.0.tar.gz"
-    sha256 "2c9958f6430a2040341a52eb608ed6dd93ef4392e02ffe219417c1b28b5dd1f4"
+    url "https://files.pythonhosted.org/packages/12/b6/7b3d16792fdf94f146bed92be90b4eb4563569eca91513c8609aebf0c167/zipp-3.22.0.tar.gz"
+    sha256 "dd2f28c3ce4bc67507bfd3781d21b7bb2be31103b51a4553ad7d90b84e57ace5"
   end
 
   def install
