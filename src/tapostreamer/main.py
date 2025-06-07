@@ -29,6 +29,8 @@ def camera_stream_worker(url: str, frame_size: tuple, out_queue, stop_event):
     """
     capture = cv2.VideoCapture(url)
     desired_interval = 0.07  # Target 15 frames per second (~0.0667 sec per frame)
+    failure_count = 0
+    max_failures = 30  # e.g., after 30 consecutive failures, try reconnect
     while not stop_event.is_set():
         loop_start = time.perf_counter()
         if not capture.isOpened():
@@ -45,12 +47,15 @@ def camera_stream_worker(url: str, frame_size: tuple, out_queue, stop_event):
         if ret and frame is not None:
             try:
                 resized = cv2.resize(frame, (frame_size[1], frame_size[0]))
+                failure_count = 0
             except Exception as resize_err:
                 logging.error(f"Error resizing frame from {url}: {resize_err}")
                 resized = np.zeros(frame_size, dtype=np.uint8)
+                failure_count += 1
         else:
             logging.warning(f"Failed to get frame from {url}, using placeholder.")
             resized = np.zeros(frame_size, dtype=np.uint8)
+            failure_count += 1
 
         # Always keep only the latest frame in the queue
         # while not out_queue.empty():
@@ -63,6 +68,13 @@ def camera_stream_worker(url: str, frame_size: tuple, out_queue, stop_event):
         except Exception:
             pass
             # logging.error(f"Cannot put frame into queue for {url}: {e}")
+
+        if failure_count > max_failures:
+            logging.error(f"Maximum failure count reached for {url}")
+            capture.release()
+            time.sleep(1)
+            capture = cv2.VideoCapture(url)
+            failure_count = 0
 
         # Calculate elapsed processing time and sleep only if needed.
         elapsed = time.perf_counter() - loop_start
