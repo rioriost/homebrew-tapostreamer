@@ -3,7 +3,7 @@ name = "tapostreamer"
 authors = [
     {name = "Rio Fujita", email = "rifujita@microsoft.com"},
 ]
-version = "0.3.4"
+version = "0.3.6"
 license = {file = "LICENSE"}
 description = "TapoStreamer is an Python application that shows the video streaming from the cameras made by TP-Link."
 readme = {file = "README.md", content-type = "text/markdown"}
@@ -36,4 +36,5 @@ exclude = [
   "tapostreamer.rb",
   "uv.lock",
   "dist/.DS_Store",
+  ".envrc",
 ]
