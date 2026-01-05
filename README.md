@@ -92,6 +92,9 @@ Press 'q' to quit.
 
 ## Release Notes
 
+### 0.3.8 Release
+* Dependency Update
+
 ### 0.3.7 Release
 * Dependency Update
 
