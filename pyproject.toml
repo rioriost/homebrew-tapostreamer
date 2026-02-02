@@ -3,11 +3,11 @@ name = "tapostreamer"
 authors = [
     {name = "Rio Fujita", email = "rifujita@microsoft.com"},
 ]
-version = "0.3.9"
+version = "0.4.0"
 license = {file = "LICENSE"}
 description = "TapoStreamer is an Python application that shows the video streaming from the cameras made by TP-Link."
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "keyring>=25.6.0",
     "opencv-python>=4.13.0.90",

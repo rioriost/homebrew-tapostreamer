@@ -1,6 +1,6 @@
 import nox
 
-nox.options.python = "3.11"
+nox.options.python = "3.14"
 nox.options.default_venv_backend = "uv"
 
 
@@ -11,14 +11,14 @@ def lint(session):
     session.run("uv", "run", "ruff", "format")
 
 
-@nox.session(python=["3.11", "3.12", "3.13"], tags=["mypy"])
+@nox.session(python=["3.11", "3.12", "3.13", "3.14"], tags=["mypy"])
 def mypy(session):
     session.install(".")
     session.install("mypy")
     session.run("uv", "run", "mypy", "src")
 
 
-@nox.session(python=["3.11", "3.12", "3.13"], tags=["pytest"])
+@nox.session(python=["3.11", "3.12", "3.13", "3.14"], tags=["pytest"])
 def pytest(session):
     session.install(".")
     session.install("pytest")

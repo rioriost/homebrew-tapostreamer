@@ -92,6 +92,9 @@ Press 'q' to quit.
 
 ## Release Notes
 
+### 0.4.0 Release
+* Bump to Python 3.14
+
 ### 0.3.9 Release
 * Dependency Update
 
